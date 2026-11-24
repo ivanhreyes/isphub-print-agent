@@ -1,0 +1,60 @@
+{
+  "data": {
+    "payment": {
+      "id": "pay_example",
+      "folio": "P-100",
+      "receiptNumber": "REC-20261124-EJEMPLO",
+      "amountCents": 34900,
+      "currency": "MXN",
+      "method": "cash",
+      "receivedAt": "2026-11-24T18:00:00Z"
+    },
+    "customer": {
+      "name": "Cliente de ejemplo",
+      "phone": "5550000000",
+      "balanceCents": 0,
+      "currency": "MXN"
+    },
+    "invoices": [
+      {
+        "id": "inv_example",
+        "folio": "F-20",
+        "totalCents": 34900,
+        "paidCents": 34900,
+        "balanceCents": 0,
+        "appliedCents": 34900,
+        "currency": "MXN"
+      }
+    ],
+    "invoice": null,
+    "summary": { "appliedCents": 34900, "creditCents": 0 },
+    "print": { "count": 0, "lastPrintedAt": null },
+    "organization": {
+      "name": "ISP de ejemplo",
+      "logo": null,
+      "rfc": "XAXX010101000",
+      "address": "Calle de ejemplo 1",
+      "phone": "5551112233",
+      "email": "caja@example.com"
+    },
+    "config": {
+      "paperWidthMm": 80,
+      "title": "RECIBO DE PAGO",
+      "headerText": "",
+      "footerText": "Gracias por su pago.",
+      "showLogo": false,
+      "showOrganizationName": true,
+      "showRfc": true,
+      "showAddress": true,
+      "showPhone": true,
+      "showEmail": false,
+      "showCustomerPhone": false,
+      "showInvoiceReference": true,
+      "showPaymentMethod": true,
+      "showRemainingBalance": true,
+      "showInvoiceBreakdown": true,
+      "showAppDownloadQr": true,
+      "customFields": []
+    }
+  }
+}

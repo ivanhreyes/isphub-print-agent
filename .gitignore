@@ -1,0 +1,6 @@
+dist/
+odd/
+*.exe
+.DS_Store
+/config.json
+*.log
