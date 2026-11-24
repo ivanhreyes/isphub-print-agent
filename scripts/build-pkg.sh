@@ -30,8 +30,8 @@ CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath \
   -ldflags "-s -w -X main.version=${VERSION}" \
   -o "$BIN" ./cmd/isphub-print-agent
 
-echo "==> Firmando binario (Developer ID Application)"
-codesign --force --timestamp --sign "$APP_ID" "$BIN"
+echo "==> Firmando binario (Developer ID Application, hardened runtime)"
+codesign --force --options runtime --timestamp --sign "$APP_ID" "$BIN"
 codesign --verify --verbose=2 "$BIN"
 
 cp "$BIN" "$PAYLOAD/usr/local/bin/isphub-print-agent"
