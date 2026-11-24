@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<installer-gui-script minSpecVersion="1">
+    <title>ISPHub Print Agent</title>
+    <organization>app.isphub</organization>
+    <domains enable_localSystem="true"/>
+    <options customize="never" require-scripts="false" hostArchitectures="arm64"/>
+    <volume-check>
+        <allowed-os-versions>
+            <os-version min="13.0"/>
+        </allowed-os-versions>
+    </volume-check>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <readme file="readme.html" mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="app.isphub.print-agent"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="app.isphub.print-agent" visible="false">
+        <pkg-ref id="app.isphub.print-agent"/>
+    </choice>
+    <pkg-ref id="app.isphub.print-agent" version="__VERSION__" onConclusion="none">isphub-print-agent-component.pkg</pkg-ref>
+</installer-gui-script>

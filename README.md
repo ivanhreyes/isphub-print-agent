@@ -4,6 +4,18 @@ Imprime recibos de ISPHub en una mini printer **EC Line EC-PM-80330** (papel de 
 
 Sirve en Mac M1, M2, M3 y M4 con macOS 13 o posterior. El binario es arm64 y el runtime de Go pide esa versión mínima; cualquier Mac con chip M1 puede instalar macOS 13. No sirve en Mac Intel.
 
+## Instalador (recomendado)
+
+La forma más fácil es el instalador `.pkg` del release:
+
+1. Descarga `ISPHub-Print-Agent-<versión>.pkg` desde [GitHub Releases](https://github.com/ivanhreyes/isphub-print-agent/releases).
+2. Ábrelo con doble clic e instala.
+3. El instalador deja el agente corriendo (arranca al iniciar sesión) y abre el navegador en
+   `http://127.0.0.1:8787/setup` con el asistente de configuración.
+4. El asistente detecta la impresora automáticamente; si no la encuentra, escribe su IP.
+
+No hace falta terminal ni drivers: la impresora es de red (TCP 9100) y el agente es un único binario.
+
 ## Quick path
 
 1. Descarga `isphub-print-agent` para arm64, o compílalo con `make build`.
@@ -43,9 +55,11 @@ Solo acepta conexiones en `127.0.0.1`. Un sitio que no sea ISPHub (`https://isph
 
 | Método | Ruta | Uso |
 |---|---|---|
+| `GET` | `/` y `/setup` | Página web del asistente de configuración |
 | `GET` | `/v1/health` | Comprueba que el agente está vivo |
 | `GET` | `/v1/printers` | Busca impresoras en la LAN. No imprime |
 | `POST` | `/v1/print` | Imprime. Cuerpo JSON |
+| `POST` | `/v1/printer` | Guarda la IP, el puerto y el ancho de papel |
 
 Ejemplo:
 

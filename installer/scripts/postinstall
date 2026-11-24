@@ -1,0 +1,26 @@
+#!/bin/bash
+# postinstall for the ISPHub Print Agent .pkg
+# Runs as root. Installs the per-user LaunchAgent for the logged-in user and
+# opens the setup page in their browser.
+set -u
+
+BIN="/usr/local/bin/isphub-print-agent"
+SETUP_URL="http://127.0.0.1:8787/setup"
+
+USER_NAME="$(stat -f %Su /dev/console 2>/dev/null || true)"
+if [ -z "$USER_NAME" ] || [ "$USER_NAME" = "root" ] || [ "$USER_NAME" = "loginwindow" ]; then
+    echo "ISPHub: no hay sesión gráfica activa; se omite el arranque automático del agente." >&2
+    exit 0
+fi
+USER_ID="$(id -u "$USER_NAME" 2>/dev/null || true)"
+if [ -z "$USER_ID" ]; then
+    exit 0
+fi
+
+# Install the LaunchAgent as that user (copies the binary to ~/Library and
+# bootstraps app.isphub.print-agent), then open the setup page in their browser.
+if /usr/bin/sudo -u "$USER_NAME" -H "$BIN" install; then
+    /usr/bin/sudo -u "$USER_NAME" -H /usr/bin/open "$SETUP_URL" || true
+fi
+
+exit 0
