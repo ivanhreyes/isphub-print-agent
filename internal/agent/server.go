@@ -36,9 +36,13 @@ func (s *Service) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/health", s.health)
 	mux.HandleFunc("GET /v1/printers", s.printers)
 	mux.HandleFunc("POST /v1/print", s.print)
+	mux.HandleFunc("POST /v1/printer", s.setPrinter)
 	mux.HandleFunc("OPTIONS /v1/health", s.preflight)
 	mux.HandleFunc("OPTIONS /v1/printers", s.preflight)
 	mux.HandleFunc("OPTIONS /v1/print", s.preflight)
+	mux.HandleFunc("OPTIONS /v1/printer", s.preflight)
+	mux.HandleFunc("GET /{$}", s.setup)
+	mux.HandleFunc("GET /setup", s.setup)
 	return mux
 }
 
@@ -103,6 +107,82 @@ func (s *Service) printers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"printers": found})
+}
+
+// setup serves the single-file configuration page.
+func (s *Service) setup(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write(setupHTML)
+}
+
+// setPrinter persists the printer address chosen in the setup page. It only
+// touches host, port and paper width; the enrollment token and agent secret
+// stay untouched.
+func (s *Service) setPrinter(w http.ResponseWriter, r *http.Request) {
+	if !s.allow(w, r) {
+		return
+	}
+	if !strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+		writeJSON(w, http.StatusUnsupportedMediaType, map[string]any{"error": "el cuerpo tiene que ser JSON"})
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "no se pudo leer la petición"})
+		return
+	}
+	var req struct {
+		Host         string `json:"host"`
+		Port         int    `json:"port"`
+		PaperWidthMm int    `json:"paperWidthMm"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "el cuerpo no es JSON válido"})
+		return
+	}
+	req.Host = strings.TrimSpace(req.Host)
+	if req.Host != "" && req.Port == 0 {
+		req.Port = 9100
+	}
+	if req.PaperWidthMm == 0 {
+		req.PaperWidthMm = 80
+	}
+	s.mu.Lock()
+	cfg := s.Config
+	s.mu.Unlock()
+	if req.Host != "" {
+		cfg.PrinterHost = req.Host
+	}
+	if req.Port > 0 {
+		cfg.PrinterPort = req.Port
+	}
+	if req.PaperWidthMm == 58 || req.PaperWidthMm == 80 {
+		cfg.PaperWidthMm = req.PaperWidthMm
+	}
+	if err := cfg.Validate(); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+	if s.Save == nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "no hay almacenamiento de configuración"})
+		return
+	}
+	if err := s.Save(cfg); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	s.mu.Lock()
+	s.Config = cfg
+	s.mu.Unlock()
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok": true,
+		"printer": map[string]any{
+			"host":         cfg.PrinterHost,
+			"port":         cfg.PrinterPort,
+			"paperWidthMm": cfg.PaperWidthMm,
+		},
+	})
 }
 
 func (s *Service) print(w http.ResponseWriter, r *http.Request) {

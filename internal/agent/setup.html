@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ISPHub · Impresora de recibos</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --text: #111827;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --ok: #16a34a;
+    --err: #dc2626;
+    --warn: #b45309;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 32px 20px 64px; }
+  header { margin-bottom: 24px; }
+  .brand { font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+  .brand span { color: var(--accent); }
+  h1 { font-size: 22px; margin: 8px 0 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 12px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot.ok { background: var(--ok); }
+  .dot.err { background: var(--err); }
+  .dot.warn { background: var(--warn); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: #fff;
+    border-radius: 8px; padding: 9px 14px; transition: background .12s ease;
+  }
+  button:hover { background: var(--accent-hover); }
+  button.ghost { background: transparent; color: var(--accent); }
+  button.ghost:hover { background: #eff6ff; }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .printer {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;
+  }
+  .printer .name { font-weight: 600; }
+  .printer .meta { color: var(--muted); font-size: 13px; }
+  .printer .tag {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+    color: var(--muted); background: #f3f4f6; border-radius: 4px; padding: 2px 6px;
+  }
+  .printer .tag.ticket { color: var(--ok); background: #ecfdf5; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+  input, select {
+    font: inherit; width: 100%; padding: 9px 10px;
+    border: 1px solid var(--border); border-radius: 8px; background: #fff;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .banner { border-radius: 8px; padding: 12px 14px; font-size: 14px; display: none; }
+  .banner.show { display: block; }
+  .banner.err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .banner.ok { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .banner.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid #c7d2fe; border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: -2px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">ISP<span>Hub</span></div>
+    <h1>Impresora de recibos</h1>
+    <p class="sub">Conecta la EC-PM-80330 para imprimir recibos desde ISPHub.</p>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <span class="dot warn" id="statusDot"></span>
+      <strong id="statusText">Comprobando el agente…</strong>
+    </div>
+    <p class="muted" id="statusDetail" style="margin:8px 0 0"></p>
+  </div>
+
+  <div class="card">
+    <h2>1 · Buscar la impresora en tu red</h2>
+    <p class="muted" style="margin:0 0 12px">Buscamos dispositivos en el puerto 9100 de tu red local. No se imprime nada durante la búsqueda.</p>
+    <div id="scanArea"></div>
+    <div class="actions">
+      <button class="ghost" id="rescanBtn" onclick="scan()">Buscar de nuevo</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2 · O configúrala manualmente</h2>
+    <p class="muted" style="margin:0 0 4px">Si la búsqueda no la encuentra, escribe su IP aquí.</p>
+    <div class="grid">
+      <div>
+        <label for="ip">Dirección IP</label>
+        <input id="ip" class="mono" placeholder="192.168.0.20" inputmode="decimal">
+      </div>
+      <div>
+        <label for="port">Puerto</label>
+        <input id="port" class="mono" type="number" value="9100">
+      </div>
+    </div>
+    <div>
+      <label for="paper">Ancho de papel</label>
+      <select id="paper">
+        <option value="80" selected>80 mm</option>
+        <option value="58">58 mm</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button id="saveBtn" onclick="saveAndTest()">Guardar y probar</button>
+    </div>
+  </div>
+
+  <div class="banner" id="banner"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let currentPaper = 80;
+let scanning = false;
+
+function banner(kind, text) {
+  const el = $('banner');
+  el.className = 'banner show ' + kind;
+  el.textContent = text;
+}
+function hideBanner() { $('banner').className = 'banner'; }
+
+async function health() {
+  try {
+    const r = await fetch('/v1/health');
+    const j = await r.json();
+    const p = j.printer || {};
+    currentPaper = p.paperWidthMm || 80;
+    $('paper').value = String(currentPaper);
+    $('statusDot').className = 'dot ok';
+    $('statusText').textContent = 'Agente activo · versión ' + (j.version || '?');
+    const host = p.host ? ('Impresora: ' + p.host + ':' + (p.port || 9100)) : 'Aún no hay impresora configurada.';
+    $('statusDetail').textContent = host + (j.dryRun ? ' · modo prueba (dry-run)' : '');
+    if (p.host) { $('ip').value = p.host; $('port').value = String(p.port || 9100); }
+  } catch (e) {
+    $('statusDot').className = 'dot err';
+    $('statusText').textContent = 'No se pudo hablar con el agente';
+    $('statusDetail').textContent = 'El agente no responde en 127.0.0.1:8787.';
+  }
+}
+
+async function scan() {
+  if (scanning) return;
+  scanning = true;
+  const area = $('scanArea');
+  area.innerHTML = '<span class="muted"><span class="spinner"></span> Buscando impresoras…</span>';
+  hideBanner();
+  try {
+    const r = await fetch('/v1/printers');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const list = (j.printers || []);
+    const tickets = list.filter(p => p.role === 'ticket');
+    const others = list.filter(p => p.role !== 'ticket');
+    if (tickets.length === 0 && others.length === 0) {
+      area.innerHTML = '<div class="empty">No encontramos ninguna impresora. Usa el paso 2 para escribir la IP a mano.</div>';
+    } else {
+      let html = '';
+      tickets.forEach(p => {
+        html += printerRow(p, true);
+      });
+      others.forEach(p => {
+        html += printerRow(p, false);
+      });
+      area.innerHTML = html;
+    }
+  } catch (e) {
+    area.innerHTML = '<div class="empty">No se pudo buscar. Verifica que la Mac esté en la misma red que la impresora.</div>';
+  } finally {
+    scanning = false;
+  }
+}
+
+function printerRow(p, selectable) {
+  const model = p.model ? ' · ' + p.model : '';
+  const tag = p.role === 'ticket' ? '<span class="tag ticket">compatible</span>'
+            : p.role === 'label' ? '<span class="tag">etiquetas (no usar)</span>'
+            : '<span class="tag">sin clasificar</span>';
+  const btn = selectable
+    ? '<button onclick="usePrinter(\'' + p.host + '\',' + (p.port || 9100) + ')">Usar esta</button>'
+    : '';
+  return '<div class="printer"><div><div class="name">' + p.host + model + '</div>' +
+    '<div class="meta">' + (p.label || '') + ' · ' + tag + '</div></div>' + btn + '</div>';
+}
+
+function usePrinter(host, port) {
+  $('ip').value = host;
+  $('port').value = String(port);
+  saveAndTest();
+}
+
+async function saveAndTest() {
+  const host = $('ip').value.trim();
+  const port = parseInt($('port').value, 10) || 9100;
+  const paper = parseInt($('paper').value, 10) || 80;
+  hideBanner();
+  if (!host) {
+    banner('err', 'Escribe la IP de la impresora (por ejemplo 192.168.0.20).');
+    return;
+  }
+  const btn = $('saveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Guardando…';
+  try {
+    const sr = await fetch('/v1/printer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host, port, paperWidthMm: paper })
+    });
+    const sj = await sr.json();
+    if (!sr.ok) {
+      banner('err', sj.error || 'No se pudo guardar la configuración.');
+      return;
+    }
+    banner('info', 'Configuración guardada. Enviando página de prueba…');
+    const tr = await fetch('/v1/print', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'test', host, port })
+    });
+    const tj = await tr.json();
+    if (tr.ok) {
+      banner('ok', 'Página de prueba enviada a ' + host + ':' + port + '. Revisa que el papel salió.');
+      $('statusDot').className = 'dot ok';
+      $('statusText').textContent = 'Agente activo · impresora configurada';
+      $('statusDetail').textContent = 'Impresora: ' + host + ':' + port;
+    } else {
+      banner('err', tj.error || 'La impresora no respondió. Verifica la IP y que esté encendida.');
+    }
+  } catch (e) {
+    banner('err', 'No se pudo completar la operación.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar y probar';
+  }
+}
+
+health().then(() => scan());
+</script>
+</body>
+</html>

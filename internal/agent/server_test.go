@@ -40,6 +40,63 @@ func TestForeignOriginIsRejected(t *testing.T) {
 	}
 }
 
+func TestSetupPageServed(t *testing.T) {
+	svc := &Service{Config: config.Default(), Version: "0.1.0", Hostname: "mac"}
+	for _, path := range []string{"/", "/setup"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		svc.Handler().ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s status %d", path, rec.Code)
+		}
+		if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+			t.Fatalf("%s content-type %q", path, ct)
+		}
+		if !strings.Contains(rec.Body.String(), "ISPHub") {
+			t.Fatalf("%s no incluye la página del asistente", path)
+		}
+	}
+}
+
+func TestSetPrinterSaves(t *testing.T) {
+	var saved config.File
+	svc := &Service{
+		Config:   config.Default(),
+		Version:  "0.1.0",
+		Hostname: "mac",
+		Save:     func(c config.File) error { saved = c; return nil },
+	}
+	req := httptest.NewRequest(http.MethodPost, "/v1/printer", strings.NewReader(`{"host":"192.168.0.20","port":9100,"paperWidthMm":80}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	svc.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d %s", rec.Code, rec.Body.String())
+	}
+	if saved.PrinterHost != "192.168.0.20" {
+		t.Fatalf("host %q", saved.PrinterHost)
+	}
+	if saved.PrinterPort != 9100 {
+		t.Fatalf("port %d", saved.PrinterPort)
+	}
+}
+
+func TestSetPrinterRejectsPublicIP(t *testing.T) {
+	svc := &Service{
+		Config:   config.Default(),
+		Version:  "0.1.0",
+		Hostname: "mac",
+		Save:     func(c config.File) error { return nil },
+	}
+	req := httptest.NewRequest(http.MethodPost, "/v1/printer", strings.NewReader(`{"host":"8.8.8.8","port":9100,"paperWidthMm":80}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	svc.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status %d %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestDryRunPrint(t *testing.T) {
 	cfg := config.Default()
 	cfg.DryRun = true
